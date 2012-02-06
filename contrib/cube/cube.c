@@ -74,6 +74,7 @@ PG_FUNCTION_INFO_V1(g_cube_penalty);
 PG_FUNCTION_INFO_V1(g_cube_picksplit);
 PG_FUNCTION_INFO_V1(g_cube_union);
 PG_FUNCTION_INFO_V1(g_cube_same);
+PG_FUNCTION_INFO_V1(g_cube_distance);
 
 Datum		g_cube_consistent(PG_FUNCTION_ARGS);
 Datum		g_cube_compress(PG_FUNCTION_ARGS);
@@ -82,6 +83,7 @@ Datum		g_cube_penalty(PG_FUNCTION_ARGS);
 Datum		g_cube_picksplit(PG_FUNCTION_ARGS);
 Datum		g_cube_union(PG_FUNCTION_ARGS);
 Datum		g_cube_same(PG_FUNCTION_ARGS);
+Datum		g_cube_distance(PG_FUNCTION_ARGS);
 
 /*
 ** B-tree support functions
@@ -780,6 +782,23 @@ cube_union_v0(NDBOX *a, NDBOX *b)
 	}
 
 	return (result);
+}
+
+Datum
+g_cube_distance(PG_FUNCTION_ARGS)
+{
+	GISTENTRY  *entry = (GISTENTRY *) PG_GETARG_POINTER(0);
+	NDBOX	   *query = PG_GETARG_NDBOX(1);
+
+	/* StrategyNumber strategy = (StrategyNumber) PG_GETARG_UINT16(2); */
+	/* Oid		subtype = PG_GETARG_OID(3); */
+	double		distance;
+
+	/* ((POLYGON *) PG_DETOAST_DATUM(X)) */
+	/* distance = DatumGetFloat8(DirectFunctionCall2(cube_distance, DatumGetNDBOX(entry->key), query)); */
+	distance = DatumGetFloat8(DirectFunctionCall2(cube_distance, entry->key, PointerGetDatum(query)));
+
+	PG_RETURN_FLOAT8(distance);
 }
 
 Datum
