@@ -140,6 +140,11 @@ RETURNS float8
 AS 'MODULE_PATHNAME'
 LANGUAGE C IMMUTABLE STRICT;
 
+CREATE FUNCTION cube_hamming_distance(cube, cube)
+RETURNS float8
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
 -- Extracting elements functions
 
 CREATE FUNCTION cube_dim(cube)
@@ -296,6 +301,15 @@ RETURNS internal
 AS 'MODULE_PATHNAME'
 LANGUAGE C IMMUTABLE STRICT;
 
+CREATE FUNCTION g_cube_distance(internal, cube, integer, oid)
+RETURNS double precision
+AS 'MODULE_PATHNAME' 
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION g_cube_hamming_distance(internal, cube, integer, oid)
+RETURNS double precision
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
 
 -- Create the operator classes for indexing
 

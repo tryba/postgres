@@ -74,6 +74,8 @@ PG_FUNCTION_INFO_V1(g_cube_penalty);
 PG_FUNCTION_INFO_V1(g_cube_picksplit);
 PG_FUNCTION_INFO_V1(g_cube_union);
 PG_FUNCTION_INFO_V1(g_cube_same);
+PG_FUNCTION_INFO_V1(g_cube_distance);
+PG_FUNCTION_INFO_V1(g_cube_hamming_distance);
 
 Datum		g_cube_consistent(PG_FUNCTION_ARGS);
 Datum		g_cube_compress(PG_FUNCTION_ARGS);
@@ -82,6 +84,8 @@ Datum		g_cube_penalty(PG_FUNCTION_ARGS);
 Datum		g_cube_picksplit(PG_FUNCTION_ARGS);
 Datum		g_cube_union(PG_FUNCTION_ARGS);
 Datum		g_cube_same(PG_FUNCTION_ARGS);
+Datum		g_cube_distance(PG_FUNCTION_ARGS);
+Datum		g_cube_hamming_distance(PG_FUNCTION_ARGS);
 
 /*
 ** B-tree support functions
@@ -126,10 +130,12 @@ Datum		cube_size(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(cube_distance);
 PG_FUNCTION_INFO_V1(cube_is_point);
 PG_FUNCTION_INFO_V1(cube_enlarge);
+PG_FUNCTION_INFO_V1(cube_hamming_distance);
 
 Datum		cube_distance(PG_FUNCTION_ARGS);
 Datum		cube_is_point(PG_FUNCTION_ARGS);
 Datum		cube_enlarge(PG_FUNCTION_ARGS);
+Datum		cube_hamming_distance(PG_FUNCTION_ARGS);
 
 /*
 ** For internal use only
@@ -647,6 +653,33 @@ g_cube_same(PG_FUNCTION_ARGS)
 	 * fprintf(stderr, "same: %s\n", (*result ? "TRUE" : "FALSE" ));
 	 */
 	PG_RETURN_NDBOX(result);
+}
+
+/*
+** Distance method
+*/
+Datum
+g_cube_distance(PG_FUNCTION_ARGS)
+{
+	GISTENTRY	*entry = (GISTENTRY *) PG_GETARG_POINTER(0);
+	NDBOX	*query = PG_GETARG_NDBOX(1);
+	double	distance;
+	distance = DatumGetFloat8(DirectFunctionCall2(cube_distance, entry->key, PointerGetDatum(query)));
+
+	PG_RETURN_FLOAT8(distance);
+}
+
+/*
+** Binary hamming distance method
+*/
+Datum
+g_cube_hamming_distance(PG_FUNCTION_ARGS)
+{
+	GISTENTRY	*entry = (GISTENTRY *) PG_GETARG_POINTER(0);
+	NDBOX	*query = PG_GETARG_NDBOX(1);
+	double  distance;
+	distance = DatumGetFloat8(DirectFunctionCall2(cube_hamming_distance, entry->key, PointerGetDatum(query)));
+	PG_RETURN_FLOAT8(distance);
 }
 
 /*
@@ -1222,6 +1255,58 @@ cube_overlap(PG_FUNCTION_ARGS)
 	PG_RETURN_BOOL(res);
 }
 
+
+/* Binary Hamming Distance */
+Datum
+cube_hamming_distance(PG_FUNCTION_ARGS)
+{
+        NDBOX      *a = PG_GETARG_NDBOX(0),
+                           *b = PG_GETARG_NDBOX(1);
+
+        bool            swapped = false;
+        double          d,
+                                distance;
+        int                     i;
+        
+        /* swap the box pointers if needed */
+        if (a->dim < b->dim)
+        {
+                NDBOX      *tmp = b;
+
+                b = a;
+                a = tmp;
+                swapped = true;
+        }
+
+        distance = 0.0;
+        /* compute within the dimensions of (b) */
+        for (i = 0; i < b->dim; i++)
+        {
+		d = a->x[i] - b->x[i];
+		if(d < 0)
+			d *= -1;
+                distance += d;
+        }
+
+        /* compute distance to zero for those dimensions in (a) absent in (b) */
+        for (i = b->dim; i < a->dim; i++)
+        {
+                distance += a->x[i];
+        }
+
+        if (swapped)
+        {
+                PG_FREE_IF_COPY(b, 0);
+                PG_FREE_IF_COPY(a, 1);
+        }
+        else
+        {
+                PG_FREE_IF_COPY(a, 0);
+                PG_FREE_IF_COPY(b, 1);
+        }
+
+        PG_RETURN_FLOAT8(distance);
+}
 
 /* Distance */
 /* The distance is computed as a per axis sum of the squared distances
